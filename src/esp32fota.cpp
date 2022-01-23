@@ -392,23 +392,26 @@ String esp32FOTA::getDeviceID()
 }
 
 // Force a firmware update regardless on current version
-void esp32FOTA::forceUpdate(String firmwareHost, uint16_t firmwarePort, String firmwarePath, boolean validate )
-{
-    if( firmwarePort == 443 || firmwarePort == 4433 )
-        _firmwareUrl = String( "https://");
-    else
-        _firmwareUrl = String( "http://" );
-    _firmwareUrl += firmwareHost + ":" + String( firmwarePort ) + firmwarePath;
-    _check_sig = validate;
-    execOTA();
-}
-
 void esp32FOTA::forceUpdate(String firmwareURL, boolean validate )
 {
     _firmwareUrl = firmwareURL;
     _check_sig = validate;
     execOTA();
 }
+
+void esp32FOTA::forceUpdate(String firmwareHost, uint16_t firmwarePort, String firmwarePath, boolean validate )
+{
+    String firmwareURL;
+
+    if( firmwarePort == 443 || firmwarePort == 4433 )
+        firmwareURL = String( "https://");
+    else
+        firmwareURL = String( "http://" );
+    firmwareURL += firmwareHost + ":" + String( firmwarePort ) + firmwarePath;
+
+    forceUpdate(firmwareURL, validate);
+}
+
 
 
 /**
