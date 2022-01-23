@@ -347,7 +347,7 @@ bool esp32FOTA::execHTTPcheck()
                 _firmwareUrl = JSONDocument["url"].as<String>();
                 if(JSONDocument["host"].is<String>())  // If the manifest provides both, warn the user
                     log_w("Manifest provides both url and host - Using URL");
-            } else if (JSONDocument["url"].is<String>() && JSONDocument["port"].is<uint16_t>() && JSONDocument["bin"].is<String>()){
+            } else if (JSONDocument["host"].is<String>() && JSONDocument["port"].is<uint16_t>() && JSONDocument["bin"].is<String>()){
                 // We were provided host/port/bin format - Build the URL
                 if( JSONDocument["port"].as<uint16_t>() == 443 || JSONDocument["port"].as<uint16_t>() == 4433 )
                     _firmwareUrl = String( "https://");
