@@ -190,7 +190,7 @@ void esp32FOTA::execOTA()
         // Connect to webserver failed
         // May be try?
         // Probably a choppy network?
-        log_i( "Connection to %s failed. Please check your setup", _host );
+        log_i( "Connection to %s failed. Please check your setup", _firmwareUrl );
         // retry??
         // execOTA();
     }
