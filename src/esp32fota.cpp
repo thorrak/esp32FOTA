@@ -391,7 +391,7 @@ String esp32FOTA::getDeviceID()
     return thisID;
 }
 
-// Force a firmware update regartless on current version
+// Force a firmware update regardless on current version
 void esp32FOTA::forceUpdate(String firmwareHost, uint16_t firmwarePort, String firmwarePath, boolean validate )
 {
     if( firmwarePort == 443 || firmwarePort == 4433 )
