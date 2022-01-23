@@ -151,8 +151,8 @@ void esp32FOTA::execOTA()
     HTTPClient http;
     //http.setConnectTimeout( 1000 );
     
-    log_i("Connecting to: %s:%i%s\r\n", _host.c_str(), _port, _bin.c_str() );
-    if( _port == 443 || _port == 4433 ) {
+    log_i("Connecting to: %s\r\n", _firmwareUrl.c_str() );
+    if( _firmwareUrl.substring( 0, 5 ) == "https" ) {
         // If we're downloading from secure port use WifiClientSecure instead
         // and provide the root_ca.pem
         log_i( "Loading root_ca.pem" );
@@ -168,11 +168,10 @@ void esp32FOTA::execOTA()
                 root_ca.push_back( root_ca_file.read() );
             }
             root_ca_file.close();
-            //http.begin( String( "https://" ) + _host + _bin, root_ca.c_str() );
-            http.begin( String( "https://") + _host + ":" + String( _port ) + _bin, root_ca.c_str() );
+            http.begin( _firmwareUrl, root_ca.c_str() );
         }
     } else {
-        http.begin( String( "http://" ) + _host + ":" + String( _port ) + _bin );
+        http.begin( _firmwareUrl );
     }
 
     const char* get_headers[] = { "Content-Length", "Content-type" };
@@ -296,8 +295,6 @@ bool esp32FOTA::execHTTPcheck()
         useURL = checkURL;
     }
 
-    _port = 80;
-
     log_i("Getting HTTP: %s",useURL.c_str());
     log_i("------");
     if ((WiFi.status() == WL_CONNECTED)) {  //Check the current connection status
@@ -344,16 +341,29 @@ bool esp32FOTA::execHTTPcheck()
 
             const char *pltype = JSONDocument["type"];
             int plversion = JSONDocument["version"];
-            const char *plhost = JSONDocument["host"];
-            _port = JSONDocument["port"];
-            const char *plbin = JSONDocument["bin"];
+
+            if(JSONDocument["url"].is<String>()) {
+                // We were provided a complete URL in the JSON manifest - use it
+                _firmwareUrl = JSONDocument["url"].as<String>();
+                if(JSONDocument["host"].is<String>())  // If the manifest provides both, warn the user
+                    log_w("Manifest provides both url and host - Using URL");
+            } else if (JSONDocument["url"].is<String>() && JSONDocument["port"].is<uint16_t>() && JSONDocument["bin"].is<String>()){
+                // We were provided host/port/bin format - Build the URL
+                if( JSONDocument["port"].as<uint16_t>() == 443 || JSONDocument["port"].as<uint16_t>() == 4433 )
+                    _firmwareUrl = String( "https://");
+                else
+                    _firmwareUrl = String( "http://" );
+
+                _firmwareUrl += JSONDocument["host"].as<String>() + ":" + String( JSONDocument["port"].as<uint16_t>() ) + JSONDocument["bin"].as<String>();
+
+            } else {
+                // JSON was malformed - no firmware target was provided
+                log_e("JSON manifest was missing both 'url' and 'host'/'port'/'bin' keys");
+                http.end();
+                return false;
+            }
+
             _payloadVersion = plversion;            
-
-            String jshost(plhost);
-            String jsbin(plbin);
-
-            _host = jshost;
-            _bin = jsbin;
 
             String fwtype(pltype);
 
@@ -382,14 +392,24 @@ String esp32FOTA::getDeviceID()
 }
 
 // Force a firmware update regartless on current version
-void esp32FOTA::forceUpdate(String firmwareHost, int firmwarePort, String firmwarePath, boolean validate )
+void esp32FOTA::forceUpdate(String firmwareHost, uint16_t firmwarePort, String firmwarePath, boolean validate )
 {
-    _host = firmwareHost;
-    _bin = firmwarePath;
-    _port = firmwarePort;
+    if( firmwarePort == 443 || firmwarePort == 4433 )
+        _firmwareUrl = String( "https://");
+    else
+        _firmwareUrl = String( "http://" );
+    _firmwareUrl += firmwareHost + ":" + String( firmwarePort ) + firmwarePath;
     _check_sig = validate;
     execOTA();
 }
+
+void esp32FOTA::forceUpdate(String firmwareURL, boolean validate )
+{
+    _firmwareUrl = firmwareURL;
+    _check_sig = validate;
+    execOTA();
+}
+
 
 /**
  * This function return the new version of new firmware
